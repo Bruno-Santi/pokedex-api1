@@ -8,6 +8,8 @@
 2. Ejecutar .
 
 ```
+cd pokedex
+
 npm i
 ```
 
