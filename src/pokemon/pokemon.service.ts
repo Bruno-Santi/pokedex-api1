@@ -85,7 +85,7 @@ export class PokemonService {
     }
   }
 
-  private handleExceptions(error: any) {
+  public handleExceptions(error: any) {
     if (error.code === 11000) {
       throw new BadRequestException(
         `The data ${JSON.stringify(error.keyValue)} is duplicated`,

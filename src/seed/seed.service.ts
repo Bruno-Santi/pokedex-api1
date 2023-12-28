@@ -1,18 +1,35 @@
 import { Injectable } from '@nestjs/common';
-import axios, { AxiosInstance } from 'axios';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 import { PokeResponse } from './interfaces/poke-response.interface';
+import { PokemonService } from 'src/pokemon/pokemon.service';
+import { AxiosAdapter } from 'src/common/adapters/axios.adapter';
 
 @Injectable()
 export class SeedService {
-  private readonly axios: AxiosInstance = axios;
+  constructor(
+    private readonly http: AxiosAdapter,
+    private readonly pokemonService: PokemonService,
+    @InjectModel('Pokemon') private readonly pokemonModel: Model<any>,
+  ) {}
+
   async executeSeed() {
-    const { data } = await this.axios.get<PokeResponse>(
-      'https://pokeapi.co/api/v2/pokemon?limit=10',
+    await this.pokemonModel.deleteMany({});
+    const data = await this.http.get<PokeResponse>(
+      'https://pokeapi.co/api/v2/pokemon?limit=650',
     );
-    data.results.forEach(({ name, url }) => {
+    const pokemonToInsert: { name: string; no: number }[] = [];
+    data.results.map(({ name, url }) => {
       const segment = url.split('/');
       const no = +segment[segment.length - 2];
+      pokemonToInsert.push({ name, no });
     });
-    return data.results;
+
+    try {
+      await this.pokemonModel.insertMany(pokemonToInsert);
+      return 'Seed Executed';
+    } catch (error) {
+      this.pokemonService.handleExceptions(error);
+    }
   }
 }
