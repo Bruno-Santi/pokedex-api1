@@ -16,20 +16,32 @@ export class SeedService {
   async executeSeed() {
     await this.pokemonModel.deleteMany({});
     const data = await this.http.get<PokeResponse>(
-      'https://pokeapi.co/api/v2/pokemon?limit=650',
+      'https://pokeapi.co/api/v2/pokemon?limit=150',
     );
-    const pokemonToInsert: { name: string; no: number }[] = [];
-    data.results.map(({ name, url }) => {
-      const segment = url.split('/');
-      const no = +segment[segment.length - 2];
-      pokemonToInsert.push({ name, no });
-    });
 
-    try {
-      await this.pokemonModel.insertMany(pokemonToInsert);
-      return 'Seed Executed';
-    } catch (error) {
-      this.pokemonService.handleExceptions(error);
-    }
+    const pokemonData = await Promise.all(
+      data.results.map(async ({ name, url }) => {
+        const segment = url.split('/');
+        const no = +segment[segment.length - 2];
+
+        const typeDetailUrl = `https://pokeapi.co/api/v2/pokemon/${name}/`;
+        const typeDetails = await this.http.get<any>(typeDetailUrl);
+
+        const typeNames = typeDetails.types.map((slot) => slot.type.name);
+
+        const formImageUrl = typeDetails.sprites?.front_default;
+
+        return {
+          name,
+          no,
+          image_url: formImageUrl,
+          types: typeNames,
+        };
+      }),
+    );
+
+    await this.pokemonModel.create(pokemonData);
+
+    return data.results;
   }
 }
